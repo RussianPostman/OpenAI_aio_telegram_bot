@@ -6,7 +6,8 @@ from aiogram.fsm.state import any_state
 from .commands import censel_hendler, start
 from .user.dialogue import start_dialogue, system_message, dialogue, clear, \
     DialogueStates
-
+from .user.transcribes import TranscribesStates, start_transcribe, \
+    set_type_file, type_file, set_type_voice, type_voice
 __all__ = ['register_user_commands']
 
 
@@ -26,6 +27,18 @@ def register_user_commands(router: Router) -> Router:
     router.message.register(system_message, DialogueStates.system_message)
     router.message.register(dialogue, DialogueStates.dialogue)
     router.callback_query.register(clear, F.data == 'cancel', DialogueStates.dialogue)
+
+    router.message.register(start_transcribe, F.text == 'Сделать транскрипцию')
+    router.callback_query.register(set_type_file, F.data == 'file', TranscribesStates.sel_input_type)
+    router.message.register(type_file, TranscribesStates.type_file)
+    router.callback_query.register(set_type_voice, F.data == 'voice', TranscribesStates.sel_input_type)
+    router.message.register(type_voice, TranscribesStates.type_voice)
+    
+
+
+    # router.callback_query.register(censel_hendler, F.data == 'voice', any_state)
+    # router.message.register(system_message, F.data == 'file', TranscribesStates.type_file)
+
 
     # # отправка очёта
     # router.message.register(start_report, IsRegisterFilter('Отправить отчёт о работе'))

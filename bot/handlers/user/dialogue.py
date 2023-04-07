@@ -1,7 +1,6 @@
 import os
 from pprint import pprint
 from httpx import Response, Timeout
-import openai_async
 
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
@@ -10,6 +9,7 @@ from aiogram import types
 
 from bot.handlers.keyboards.user_kb import DIALOGUE_KB
 from bot.settings import OPENAI_API_KEY, TIMEOUT
+from bot import openai_async
 
 
 class DialogueStates(StatesGroup):
@@ -66,10 +66,13 @@ async def dialogue(
             'messages': m_history
             },
         )
-    print(OPENAI_API_KEY)
-    pprint(completion.json())
     chat_response = completion.json()["choices"][0]["message"]['content']
     m_history.append({"role": "assistant", "content": chat_response})
+
+    await SendMessage(
+        text=chat_response,
+        chat_id=message.from_user.id,
+    )
 
 
 async def clear(query: types.CallbackQuery, state: FSMContext):
