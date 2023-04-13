@@ -1,7 +1,27 @@
-from pydub import AudioSegment
+import asyncio
+from datetime import date
+from pprint import pprint
+from bot import openai_async
+from httpx import Response
 
-name = 'Russian_Postman'
+from bot.settings import OPENAI_API_KEY, GPT4_API_KEY
 
-given_audio = AudioSegment.from_ogg("Russian_Postman.ogg", format="ogg")                                                
 
-given_audio.export("Russian_Postman.mp3", format="mp3")
+async def main():
+    completion: Response = await openai_async.chat_complete(
+        api_key=OPENAI_API_KEY,
+        timeout=60,
+        payload={
+            'model': "gpt-3.5-turbo",
+            'messages': [
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": "Who won the world series in 2020?"}
+            ]
+        },
+    )
+    pprint(completion)
+    chat_response = completion.json()["choices"][0]["message"]['content']
+    print(chat_response)
+
+
+asyncio.run(main())

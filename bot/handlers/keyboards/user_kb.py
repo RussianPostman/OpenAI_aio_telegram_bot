@@ -7,13 +7,36 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.filters.callback_data import CallbackData
 
 
+START_BOARD_LITE = ReplyKeyboardMarkup(
+    keyboard=[
+        [
+            KeyboardButton(text='Новый диалог')
+        ],
+    ],
+    resize_keyboard=True
+)
+
+
 START_BOARD = ReplyKeyboardMarkup(
     keyboard=[
         [
-            KeyboardButton(text='Начать диалог')
+            KeyboardButton(text='Новый диалог')
         ],
         [
-            KeyboardButton(text='Сделать транскрипцию')
+            KeyboardButton(text='Продолжить диалог')
+        ]
+    ],
+    resize_keyboard=True
+)
+
+
+SELECT_MODEL = ReplyKeyboardMarkup(
+    keyboard=[
+        [
+            KeyboardButton(text='gpt-3.5-turbo')
+        ],
+        [
+            KeyboardButton(text='gpt-4')
         ]
     ],
     resize_keyboard=True
