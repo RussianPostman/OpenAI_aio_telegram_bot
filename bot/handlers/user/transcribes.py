@@ -12,41 +12,10 @@ from aiogram.fsm.context import FSMContext
 from aiogram.methods import SendMessage
 from aiogram import types, Bot
 
-from bot.handlers.keyboards.user_kb import SELECT_TYPE_KB
+from bot.handlers.keyboards.user_kb import gen_transcribe_bt
 from bot.settings import OPENAI_API_KEY, TIMEOUT
 from bot import openai_async
-
-
-class TranscribesStates(StatesGroup):
-    """
-    Состояния для диалога с GPT
-    """
-    sel_input_type = State()
-    type_file = State()
-    type_voice = State()
-
-
-async def start_transcribe(
-        message: types.Message,
-        state: FSMContext,
-        ):
-    await state.set_state(TranscribesStates.sel_input_type)
-    await message.answer(
-        'В каком виде передадите аудиио?',
-        reply_markup=SELECT_TYPE_KB
-        )
-
-
-async def set_type_file(
-        query: types.CallbackQuery,
-        state: FSMContext,
-        ):
-    await state.set_state(TranscribesStates.type_file)
-    await SendMessage(
-        text='Пришлите aудиофайл',
-        chat_id=query.from_user.id,
-    )
-
+from bot.handlers.user._tools import decoder_to_mp3
 
 async def type_file(
         message: types.Message,
@@ -57,46 +26,43 @@ async def type_file(
     bot: Bot = data['bot']
 
     file = await bot.get_file(file_id)
-    file_path = file.file_path
-    audio_file: io.BytesIO = await bot.download_file(file_path)
-    audio_file.name = 'new.mp3'
-    ansver = openai.Audio.transcribe("whisper-1", audio_file, response_format='text')
-
-    print(ansver)
-
-    await SendMessage(
-        text=ansver,
+    file_path = await decoder_to_mp3(file, bot)
+    mess = await SendMessage(
+        text='Обработка...',
         chat_id=message.from_user.id,
     )
 
-
-async def set_type_voice(
-        query: types.CallbackQuery,
-        state: FSMContext,
-        ):
-    await state.set_state(TranscribesStates.type_voice)
-    await SendMessage(
-        text='Перешлите голосовое сообщение',
-        chat_id=query.from_user.id,
-    )
+    with open(file_path, "rb") as file:
+        ansver = openai.Audio.transcribe(
+            "whisper-1",
+            file,
+            response_format='text'
+            )
+        await mess.edit_text(
+            text=ansver,
+            reply_markup=gen_transcribe_bt(mess.message_id)
+        )
+    os.remove(file_path)
 
 
 async def type_voice(
         message: types.Message,
+        state: FSMContext,
         **data: dict[str, Any],
     ):
-    
+    mess = await SendMessage(
+        text='Обработка...',
+        chat_id=message.from_user.id,
+    )
+
     file_id = message.voice.file_id
     bot: Bot = data['bot']
     file = await bot.get_file(file_id)
-
     tg_file_path = file.file_path
     file_path = f'bot/docs/{file_id}.mp3'
-
     audio_file: io.BytesIO = await bot.download_file(tg_file_path)
     audio_file.name = 'new.ogg'
-
-    given_audio = AudioSegment.from_ogg(audio_file)
+    given_audio = AudioSegment.from_file(audio_file)
     given_audio.export(file_path, format="mp3")
 
     with open(file_path, "rb") as file:
@@ -105,8 +71,9 @@ async def type_voice(
             file,
             response_format='text'
             )
-        await SendMessage(
+        await mess.edit_text(
             text=ansver,
-            chat_id=message.from_user.id,
+            reply_markup=gen_transcribe_bt(mess.message_id)
         )
+        
     os.remove(file_path)

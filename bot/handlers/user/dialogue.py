@@ -1,63 +1,76 @@
 from pprint import pprint
+from typing import Any
 from httpx import Response, Timeout
 
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
 from aiogram.methods import SendMessage
-from aiogram import types
+from aiogram import Bot, types
 from sqlalchemy.orm import sessionmaker
 
-from bot.handlers.keyboards.user_kb import DIALOGUE_KB
-from bot import settings as sett # OPENAI_API_KEY, TIMEOUT, DEFOULT_PROMPT
-from bot.db import create_dialogue, get_dialogue, get_user_dialogues, \
+# from bot.handlers.keyboards.user_kb import DIALOGUE_KB
+from bot import settings as sett
+from bot.db import create_dialogue, get_dialogue, get_dial_by_id, \
     create_message
 from bot import openai_async
-from ._tools import generate_payload
+from ._tools import generate_payload, get_api_key, check_tokens_buffer, \
+    add_message
+from bot.handlers.states import DialogueStates
+from bot.handlers.keyboards.user_kb import UserDialoguesCallback, TranscribeCD
 
 
-class DialogueStates(StatesGroup):
-    """
-    Состояния для диалога с GPT
-    """
-    dialogue = State()
-
-
-async def new_dialogue(
+async def new_GPT_3(
         message: types.Message,
         state: FSMContext,
         session_maker: sessionmaker
         ):
-    await message.answer(
-        'Создаём новый диалог',
+    await state.clear()
+    msg = await message.answer(
+        'Секунду...',
         )
     user_id = message.from_user.id
-    last_dialogue = await create_dialogue(user_id, session_maker)
-    await sett.redis.set(name=f'{user_id}_last', value=last_dialogue.name)
+    last_dialogue = await create_dialogue(user_id, session_maker, 'gpt-3.5-turbo')
     await state.set_state(DialogueStates.dialogue)
     await generate_payload(state, last_dialogue, session_maker)
-    await message.answer(
+    await state.update_data(api_key=sett.OPENAI_API_KEY)
+    await msg.edit_text(
+        f'Диалог {last_dialogue.name} создан.',
+        )
+    
+
+async def new_GPT_4(
+        message: types.Message,
+        state: FSMContext,
+        session_maker: sessionmaker
+        ):
+    await state.clear()
+    msg = await message.answer(
+        'Секунду...',
+        )
+    user_id = message.from_user.id
+    last_dialogue = await create_dialogue(user_id, session_maker, 'gpt-4')
+    # await sett.redis.set(name=f'{user_id}_last', value=last_dialogue.name)
+    await state.set_state(DialogueStates.dialogue)
+    await generate_payload(state, last_dialogue, session_maker)
+    await state.update_data(api_key=sett.GPT4_API_KEY)
+    await msg.edit_text(
         f'Диалог {last_dialogue.name} создан.',
         )
 
 
-async def resume_dialogue(
-        message: types.Message,
+async def open_dialogue(
+        query: types.CallbackQuery,
+        callback_data: UserDialoguesCallback,
         state: FSMContext,
         session_maker: sessionmaker
     ):
-    iser_id = message.from_user.id
-    dialogue_name = await sett.redis.get(name=f'{iser_id}_last')
-    if dialogue_name:
-        last_dialogue = await get_dialogue(
-            iser_id, dialogue_name.decode("utf-8"), session_maker)
-    else:
-        dial_list = await get_user_dialogues(iser_id, session_maker)
-        last_dialogue = dial_list[-1]
-    
+    dial = await get_dial_by_id(callback_data.dial_id, session_maker)
     await state.set_state(DialogueStates.dialogue)
-    await generate_payload(state, last_dialogue, session_maker)
-    await message.answer(
-        f'Последний далог {last_dialogue.name} открыт.',
+    await generate_payload(state, dial, session_maker)
+    await get_api_key(dial, state)
+    return await SendMessage(
+        text=f'Диалог {dial.name} открыт',
+        chat_id=query.from_user.id,
         )
 
 
@@ -66,53 +79,95 @@ async def dialogue(
         state: FSMContext,
         session_maker: sessionmaker
         ):
-    data: list = await state.get_data()
-    payload: list = data['payload']
-    messages = payload.pop('messages')
-    messages.append({"role": "user", "content": message.text})
-
+    data = await add_message(message.text, "user", state)
     await create_message(
         data['dialogue_id'],
         role='user',
         text=message.text,
         session_maker=session_maker
         )
+    await check_tokens_buffer(state, session_maker)
 
-    payload['messages'] = messages
-
-    await SendMessage(
-        text='Запрос к gpt-3.5-turbo отправлен',
+    payload = data.get('payload')
+    msg = await SendMessage(
+        text=f'Запрос к {payload.get("model")} отправлен',
         chat_id=message.from_user.id,
-        reply_markup=DIALOGUE_KB
     )
     completion: Response = await openai_async.chat_complete(
-        api_key=sett.OPENAI_API_KEY,
+        api_key=data.get('api_key'),
         timeout=60,
         payload=payload,
         )
-    
-    pprint(completion.json())
-
     try:
         chat_response = completion.json()["choices"][0]["message"]['content']
     except KeyError:
-        message.answer('Что-то пошло не так')
-        return
+        return await msg.edit_text('Что-то пошло не так')
 
-    messages = payload.pop('messages')
-    messages.append({"role": "assistant", "content": chat_response})
-    payload['messages'] = messages
- 
-    await state.update_data(payload=payload)
-    await SendMessage(
-        text=chat_response,
-        chat_id=message.from_user.id,
-    )
-
+    data = await add_message(chat_response, "assistant", state)
+    await msg.edit_text(chat_response)
     await create_message(
         data['dialogue_id'],
         role='assistant',
         text=chat_response,
         session_maker=session_maker
         )
-    pprint(messages)
+    await check_tokens_buffer(state, session_maker)
+    payload = data.get('payload')
+    msg = await SendMessage(
+        text=f'Запрос к {payload.get("model")} отправлен',
+        chat_id=message.from_user.id,
+    )
+
+
+async def transcribe_to_gpt(
+        query: types.CallbackQuery,
+        callback_data: TranscribeCD,
+        state: FSMContext,
+        session_maker: sessionmaker,
+        **data: dict[str, Any],
+    ):
+    mess_id = callback_data.message_id
+    chat_id = query.from_user.id
+    bot: Bot = data['bot']
+
+    mess = await bot.forward_message(chat_id, chat_id, mess_id)
+    cache_data = await add_message(mess.text, "user", state)
+    payload = cache_data.get('payload')
+    await create_message(
+        cache_data['dialogue_id'],
+        role='user',
+        text=mess.text,
+        session_maker=session_maker
+        )
+    await mess.delete()
+    await check_tokens_buffer(state, session_maker)
+    msg = await SendMessage(
+        text=f'Запрос к {payload.get("model")} отправлен',
+        chat_id=query.from_user.id,
+    )
+    completion: Response = await openai_async.chat_complete(
+        api_key=cache_data.get('api_key'),
+        timeout=60,
+        payload=payload,
+        )
+    try:
+        chat_response = completion.json()["choices"][0]["message"]['content']
+    except KeyError:
+        return await msg.edit_text('Что-то пошло не так')
+    
+    cache_data = await add_message(chat_response, "assistant", state)
+    await msg.edit_text(chat_response)
+    await create_message(
+        cache_data['dialogue_id'],
+        role='assistant',
+        text=chat_response,
+        session_maker=session_maker
+        )
+    await check_tokens_buffer(state, session_maker)
+    payload = cache_data.get('payload')
+    # msg = await SendMessage(
+    #     text=f'Запрос к {payload.get("model")} отправлен',
+    #     chat_id=query.from_user.id,
+    # )
+
+    

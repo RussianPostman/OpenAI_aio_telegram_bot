@@ -12,7 +12,10 @@ __all__ = [
     'get_dialogue',
     'get_user_dialogues',
     'create_message',
-    'get_dialogue_messages'
+    'get_dialogue_messages',
+    'get_dial_by_id',
+    'update_dial_field',
+    'delete_first_message'
 ]
 
 from .engine import create_async_engine, get_session_maker
@@ -20,6 +23,7 @@ from .models import User, Dialogue, Message
 from .base import BaseModel
 from .services.users import is_user_exists, create_user
 from .services.dialogues import get_user_dialogues, create_dialogue, \
-    get_dialogue
-from .services.messages import create_message, get_dialogue_messages
+    get_dialogue, get_dial_by_id, update_dial_field
+from .services.messages import create_message, get_dialogue_messages, \
+    delete_first_message
  

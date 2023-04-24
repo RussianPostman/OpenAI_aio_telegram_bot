@@ -39,3 +39,20 @@ async def get_dialogue_messages(
                 .where(Message.dialogue_id == int(dialogue_id))
             )
             return sql_res.all()
+
+
+async def delete_first_message(
+        dialogue_id: str,
+        session_maker: sessionmaker
+    ) -> Message:
+    async with session_maker() as session:
+        async with session.begin():
+            sql_res = await session.scalars(
+                select(Message)
+                .where(Message.dialogue_id == int(dialogue_id))
+            )
+            result = sql_res.all()
+            first = result[1]
+            print(first.text)
+            await session.delete(first)
+

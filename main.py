@@ -48,6 +48,9 @@ async def main():
 
     register_user_commands(dp)
 
+    ####
+    # await redis.flushdb()
+
     await dp.start_polling(bot, session_maker=session_maker)
 
 
