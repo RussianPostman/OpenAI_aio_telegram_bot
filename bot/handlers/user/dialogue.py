@@ -43,6 +43,7 @@ async def new_GPT_3(
     await gen_dialogue_cache(
         user_id,
         state,
+        last_dialogue,
         session_maker)
     await check_tokens_limit(
         state,

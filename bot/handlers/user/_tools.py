@@ -222,6 +222,8 @@ async def send_message_stream(state: FSMContext):
     while answer is None:
         if model == "gpt-4":
             openai.api_key = sett.GPT4_API_KEY
+        elif model == "gpt-3.5-turbo":
+            openai.api_key = sett.OPENAI_API_KEY
         r_gen = await openai.ChatCompletion.acreate(stream=True, **payload)
         answer = ""
         async for r_item in r_gen:

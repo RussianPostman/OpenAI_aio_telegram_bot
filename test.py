@@ -28,6 +28,7 @@
 
 import asyncio
 import openai
+import bot.settings as sett
 
 
 def _postprocess_answer(answer):
@@ -35,7 +36,7 @@ def _postprocess_answer(answer):
         return 
 
 
-async def send_message_stream(messages, model = "gpt-4"):
+async def send_message_stream(messages, model = "gpt-3.5-turbo"):
     answer = None
     while answer is None:
         if model in {"gpt-3.5-turbo", "gpt-4"}:
@@ -60,7 +61,7 @@ async def send_message_stream(messages, model = "gpt-4"):
 
 
 mess = ({"role": 'user', "content": 'расскажи о себе'},)
-openai.api_key = "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"
+openai.api_key =  sett.OPENAI_API_KEY
 
 
 
