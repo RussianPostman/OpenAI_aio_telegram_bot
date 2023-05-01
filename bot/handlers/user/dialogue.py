@@ -10,11 +10,12 @@ from sqlalchemy.orm import sessionmaker
 
 # from bot.handlers.keyboards.user_kb import DIALOGUE_KB
 from bot import settings as sett
-from bot.db import create_dialogue, get_dialogue, get_dial_by_id, \
-    create_message
+from bot.db import create_dialogue, get_dial_by_id, \
+    create_message, get_or_create_account
 from bot import openai_async
 from ._tools import generate_payload, get_api_key, check_tokens_buffer, \
-    add_message
+    add_message, set_accounting, message_handle_fn, gen_dialogue_cache
+from bot.handlers._accounting import check_tokens_limit
 from bot.handlers.states import DialogueStates
 from bot.handlers.keyboards.user_kb import UserDialoguesCallback, TranscribeCD
 
@@ -29,10 +30,25 @@ async def new_GPT_3(
         'Секунду...',
         )
     user_id = message.from_user.id
-    last_dialogue = await create_dialogue(user_id, session_maker, 'gpt-3.5-turbo')
     await state.set_state(DialogueStates.dialogue)
-    await generate_payload(state, last_dialogue, session_maker)
-    await state.update_data(api_key=sett.OPENAI_API_KEY)
+
+    last_dialogue = await create_dialogue(
+        user_id,
+        session_maker,
+        'gpt-3.5-turbo'
+        )
+    # await get_or_create_account(user_id, 'gpt-3.5-turbo', session_maker) # 
+    # await generate_payload(state, last_dialogue, session_maker)
+    # await set_accounting(state, user_id, session_maker)
+    await gen_dialogue_cache(
+        user_id,
+        state,
+        session_maker)
+    await check_tokens_limit(
+        state,
+        session_maker
+        )
+    # await state.update_data(api_key=sett.OPENAI_API_KEY)
     await msg.edit_text(
         f'Диалог {last_dialogue.name} создан.',
         )
@@ -49,13 +65,16 @@ async def new_GPT_4(
         )
     user_id = message.from_user.id
     last_dialogue = await create_dialogue(user_id, session_maker, 'gpt-4')
-    # await sett.redis.set(name=f'{user_id}_last', value=last_dialogue.name)
+    await get_or_create_account(user_id, 'gpt-4', session_maker) # 
     await state.set_state(DialogueStates.dialogue)
-    await generate_payload(state, last_dialogue, session_maker)
-    await state.update_data(api_key=sett.GPT4_API_KEY)
-    await msg.edit_text(
-        f'Диалог {last_dialogue.name} создан.',
+    promt =  await generate_payload(state, last_dialogue, session_maker)
+    await set_accounting(state, user_id, session_maker)
+    await check_tokens_limit(
+        state,
+        session_maker
         )
+    await state.update_data(api_key=sett.GPT4_API_KEY)
+    await msg.edit_text(f'Диалог {last_dialogue.name} создан.')
 
 
 async def open_dialogue(
@@ -68,6 +87,7 @@ async def open_dialogue(
     await state.set_state(DialogueStates.dialogue)
     await generate_payload(state, dial, session_maker)
     await get_api_key(dial, state)
+    await set_accounting(state, query.from_user.id, session_maker) 
     return await SendMessage(
         text=f'Диалог {dial.name} открыт',
         chat_id=query.from_user.id,
@@ -80,6 +100,10 @@ async def dialogue(
         session_maker: sessionmaker
         ):
     data = await add_message(message.text, "user", state)
+    await check_tokens_limit(
+        state,
+        session_maker
+        )
     await create_message(
         data['dialogue_id'],
         role='user',
@@ -93,18 +117,14 @@ async def dialogue(
         text=f'Запрос к {payload.get("model")} отправлен',
         chat_id=message.from_user.id,
     )
-    completion: Response = await openai_async.chat_complete(
-        api_key=data.get('api_key'),
-        timeout=60,
-        payload=payload,
-        )
-    try:
-        chat_response = completion.json()["choices"][0]["message"]['content']
-    except KeyError:
-        return await msg.edit_text('Что-то пошло не так')
+    chat_response = await message_handle_fn(state, msg)
 
     data = await add_message(chat_response, "assistant", state)
-    await msg.edit_text(chat_response)
+    await check_tokens_limit(
+        state,
+        session_maker
+        )
+    # await msg.edit_text(chat_response)
     await create_message(
         data['dialogue_id'],
         role='assistant',
@@ -113,10 +133,6 @@ async def dialogue(
         )
     await check_tokens_buffer(state, session_maker)
     payload = data.get('payload')
-    msg = await SendMessage(
-        text=f'Запрос к {payload.get("model")} отправлен',
-        chat_id=message.from_user.id,
-    )
 
 
 async def transcribe_to_gpt(
@@ -165,9 +181,3 @@ async def transcribe_to_gpt(
         )
     await check_tokens_buffer(state, session_maker)
     payload = cache_data.get('payload')
-    # msg = await SendMessage(
-    #     text=f'Запрос к {payload.get("model")} отправлен',
-    #     chat_id=query.from_user.id,
-    # )
-
-    

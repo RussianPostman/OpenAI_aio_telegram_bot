@@ -15,9 +15,35 @@ class User(BaseModel):
 
     user_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=False)
     dialogues: Mapped[list["Dialogue"]] = relationship(back_populates="user")
+    account: Mapped[list["Accounting"]] = relationship(back_populates="user")
 
     def __str__(self) -> int:
         return f'User: {self.user_id}'
+
+    def __repr__(self):
+        return self.__str__()
+
+
+class Accounting(BaseModel):
+    """
+    Класс учёта токенов
+    args:
+        model: Mapped[str] - модель ГПТ
+        spent: Mapped[int] - потраченно токенов
+        paid: Mapped[int] - доступно токенов
+    """
+    __tablename__ = 'accounting'
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    model: Mapped[str]
+    spent: Mapped[int]
+    paid: Mapped[int]
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"))
+    user: Mapped["User"] = relationship(back_populates="account")
+
+    def __str__(self) -> int:
+        return f'Модель: {self.model}'
 
     def __repr__(self):
         return self.__str__()

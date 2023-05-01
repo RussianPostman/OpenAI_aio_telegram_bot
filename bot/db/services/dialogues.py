@@ -20,13 +20,13 @@ async def create_dialogue(
     ) -> Dialogue:
     async with session_maker() as session:
         async with session.begin():
-            tuday = date.today()
-            year_minth = tuday.strftime(' %d.%m.%Y')
             user_res = await session.scalars(
                 select(User)
                 .options(selectinload(User.dialogues))
                 .where(User.user_id == int(user_id))
             )
+            tuday = date.today()
+            year_minth = tuday.strftime(' %d.%m.%Y')
             user: User = user_res.first()
             name = model + year_minth
             dialogue = Dialogue(

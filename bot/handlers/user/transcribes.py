@@ -16,9 +16,12 @@ from bot.handlers.keyboards.user_kb import gen_transcribe_bt
 from bot.settings import OPENAI_API_KEY, TIMEOUT
 from bot import openai_async
 from bot.handlers.user._tools import decoder_to_mp3
+from bot.handlers._accounting import add_wisper_tokens
+
 
 async def type_file(
         message: types.Message,
+        state: FSMContext,
         **data: dict[str, Any],
         ):
 
@@ -38,6 +41,8 @@ async def type_file(
             file,
             response_format='text'
             )
+        duration = round(len(file) / 1000.0)
+        add_wisper_tokens(duration, state)
         await mess.edit_text(
             text=ansver,
             reply_markup=gen_transcribe_bt(mess.message_id)
@@ -71,6 +76,8 @@ async def type_voice(
             file,
             response_format='text'
             )
+        duration = round(len(file) / 1000.0)
+        add_wisper_tokens(duration, state)
         await mess.edit_text(
             text=ansver,
             reply_markup=gen_transcribe_bt(mess.message_id)

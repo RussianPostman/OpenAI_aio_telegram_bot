@@ -23,3 +23,4 @@ TIMEOUT = Timeout(10.0, read=None)
 GPT4_API_KEY = os.getenv('GPT4_API_KEY')
 
 DEFOULT_PROMPT = 'Ты - универсальный помощник'
+DELTA_CHARACTERS = 30 # количество токенов в режиме стриминга 
