@@ -10,7 +10,7 @@ from sqlalchemy import URL
 
 from bot.handlers import register_user_commands
 from bot.middleweres.register_check import RegisterCheck
-from bot.settings import bot_commands, redis
+import bot.settings as sett
 from bot.db import create_async_engine, get_session_maker
 from bot.on_start.set_db_info import on_start
 
@@ -25,20 +25,20 @@ async def main():
     logging.basicConfig(level=logging.DEBUG)
     commands_for_bot = []
 
-    for cmd in bot_commands:
+    for cmd in sett.bot_commands:
         commands_for_bot.append(BotCommand(command=cmd[0], description=cmd[1]))
 
-    dp = Dispatcher(storage=RedisStorage(redis=redis))
+    dp = Dispatcher(storage=RedisStorage(redis=sett.redis))
     bot = Bot(TELEGRAM_TOKEN)
     await bot.set_my_commands(commands=commands_for_bot)
 
     postgres_url = URL.create(
         drivername="postgresql+asyncpg",
-        username=os.getenv("POSTGRES_USER"),
-        host='127.0.0.1',
-        database=os.getenv("POSTGRES_DB"),
-        port=os.getenv("POSTGRES_PORT"),
-        password=os.getenv("POSTGRES_PASSWORD")
+        username=sett.POSTGRES_USER,
+        host=sett.POSTGRES_HOST,
+        database=sett.POSTGRES_DB,
+        port=sett.POSTGRES_PORT,
+        password=sett.POSTGRES_PASSWORD
     )
 
     dp.message.middleware(RegisterCheck())
