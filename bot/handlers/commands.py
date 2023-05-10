@@ -5,22 +5,25 @@ from aiogram.methods import SendMessage
 
 from sqlalchemy.orm import sessionmaker
 
-from bot.handlers.keyboards.user_kb import gen_dialogues_kb
-from bot.db import get_user_dialogues
-from .states import DialogueStates
+import bot.handlers.keyboards.user_kb as ukb
+import bot.db as db
 
 
-# async def start(
-#     message: types.Message,
-#     session_maker: sessionmaker,
-#     state: FSMContext,
-#     **data: dict[str, Any],
-#     ):
-#     """
-#     Хендлер для команды /start
-#     :param message:
-#     """
-#     await state.clear()
+async def chat_mode(
+    message: types.Message,
+    session_maker: sessionmaker,
+    state: FSMContext,
+    ):
+    """
+    Хендлер для команды /mode
+    """
+    await state.clear()
+    prompts = await db.get_public_prompts(session_maker)
+    await SendMessage(
+        chat_id=message.from_user.id,
+        text='Выбирите модификацию чата',
+        reply_markup=ukb.gen_prompts_kb(prompts)
+    )
 
 
 async def dialogue_list(
@@ -30,13 +33,13 @@ async def dialogue_list(
     ):
     await state.clear()
     user_id = message.from_user.id
-    dial_list = await get_user_dialogues(
+    dial_list = await db.get_user_dialogues(
         user_id,
         session_maker
         )
     await message.answer(
         text='Ваши диалоги',
-        reply_markup=gen_dialogues_kb(dial_list)
+        reply_markup=ukb.gen_dialogues_kb(dial_list)
         )
     
 

@@ -17,6 +17,8 @@ async def create_dialogue(
         max_tokens: int = 1500,
         presence_penalty: float = 0,
         frequency_penalty: float = 0,
+        name: str = None,
+        parse_mode: str = 'markdown'
     ) -> Dialogue:
     async with session_maker() as session:
         async with session.begin():
@@ -28,7 +30,8 @@ async def create_dialogue(
             tuday = date.today()
             year_minth = tuday.strftime(' %d.%m.%Y')
             user: User = user_res.first()
-            name = model + year_minth
+            if not name:
+                name = model + year_minth
             dialogue = Dialogue(
                 name = name,
                 model = model,
@@ -38,12 +41,13 @@ async def create_dialogue(
                 max_tokens = max_tokens,
                 presence_penalty = presence_penalty,
                 frequency_penalty = frequency_penalty,
-                user_id = user_id
+                user_id = user_id,
+                parse_mode = parse_mode
             )
             user.dialogues.append(dialogue)
             session.add(dialogue)
             session.add(user)
-            return dialogue
+        return dialogue
 
 
 async def get_user_dialogues(
@@ -102,7 +106,5 @@ async def update_dial_field(
                 .where(Dialogue.id == int(dial_id))
             )
             dial: Dialogue = sql_res.first()
-            print(dial.temperature)
             setattr(dial, field_name, value)
-            print(dial.temperature)
             session.add(dial)

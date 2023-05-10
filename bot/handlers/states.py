@@ -8,3 +8,9 @@ class DialogueStates(StatesGroup):
     dialogue = State()
     settings_menu = State()
     change_2 = State()
+
+
+# class ModeMenuStates(StatesGroup):
+#     """
+#     Состояния для выбора предустановленного промпта
+#     """

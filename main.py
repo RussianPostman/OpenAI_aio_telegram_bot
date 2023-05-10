@@ -12,6 +12,7 @@ from bot.handlers import register_user_commands
 from bot.middleweres.register_check import RegisterCheck
 from bot.settings import bot_commands, redis
 from bot.db import create_async_engine, get_session_maker
+from bot.on_start.set_db_info import on_start
 
 
 load_dotenv()
@@ -48,8 +49,10 @@ async def main():
 
     register_user_commands(dp)
 
+    await on_start(session_maker)
+
     ####
-    await redis.flushdb()
+    # await redis.flushdb()
 
     await dp.start_polling(bot, session_maker=session_maker)
 

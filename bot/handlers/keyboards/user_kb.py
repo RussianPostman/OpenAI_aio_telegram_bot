@@ -4,7 +4,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.filters.callback_data import CallbackData
 
 from bot.db import Dialogue
-
+from bot.db.models import Prompt
 
 class TranscribeCD(CallbackData, prefix='to_gpt'):
     """
@@ -71,6 +71,27 @@ def gen_settings_kb(payload: dict) -> InlineKeyboardMarkup:
             text=key,
             callback_data=SettingsCallback(
                 param=key,
+                ).pack()
+            )
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+class SelectPromptCD(CallbackData, prefix='sel_prompt'):
+    """
+    Выбор предустановленной модификации диалога
+    """
+    flag: str = '1'
+    id: str = None
+
+
+def gen_prompts_kb(prompts: list[Prompt]) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    for prompt in prompts:
+        builder.button(
+            text=prompt.name,
+            callback_data=SelectPromptCD(
+                id=prompt.id,
                 ).pack()
             )
     builder.adjust(1)

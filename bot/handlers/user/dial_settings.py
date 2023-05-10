@@ -5,7 +5,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.methods import SendMessage
 from aiogram import types
 from sqlalchemy.orm import sessionmaker
-from bot.db.services.dialogues import update_dial_field
+from bot.db.db_services.dialogues import update_dial_field
 
 from bot.handlers.states import DialogueStates
 from bot.handlers.keyboards.user_kb import gen_settings_kb, SettingsCallback

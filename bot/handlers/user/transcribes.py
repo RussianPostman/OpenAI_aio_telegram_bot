@@ -1,20 +1,14 @@
-import io
 import os
-import aiofiles
-from pprint import pprint
-from typing import Any
-from httpx import Response, Timeout
 import openai
-from pydub import AudioSegment
+import audioread
+from typing import Any
 
-from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
 from aiogram.methods import SendMessage
 from aiogram import types, Bot
+from sqlalchemy.orm import sessionmaker
 
 from bot.handlers.keyboards.user_kb import gen_transcribe_bt
-from bot.settings import OPENAI_API_KEY, TIMEOUT
-from bot import openai_async
 from bot.handlers.user._tools import decoder_to_mp3
 from bot.handlers._accounting import add_wisper_tokens
 
@@ -22,6 +16,7 @@ from bot.handlers._accounting import add_wisper_tokens
 async def type_file(
         message: types.Message,
         state: FSMContext,
+        session_maker: sessionmaker,
         **data: dict[str, Any],
         ):
 
@@ -41,46 +36,62 @@ async def type_file(
             file,
             response_format='text'
             )
-        duration = round(len(file) / 1000.0)
-        add_wisper_tokens(duration, state)
         await mess.edit_text(
             text=ansver,
             reply_markup=gen_transcribe_bt(mess.message_id)
         )
+    with audioread.audio_open(file_path) as f:
+        totalsec = f.duration
+        duration = int(totalsec)
+        await add_wisper_tokens(duration, state, session_maker)
+    
     os.remove(file_path)
 
 
 async def type_voice(
         message: types.Message,
         state: FSMContext,
+        session_maker: sessionmaker,
         **data: dict[str, Any],
     ):
     mess = await SendMessage(
         text='Обработка...',
         chat_id=message.from_user.id,
     )
-
     file_id = message.voice.file_id
     bot: Bot = data['bot']
+
     file = await bot.get_file(file_id)
-    tg_file_path = file.file_path
-    file_path = f'bot/docs/{file_id}.mp3'
-    audio_file: io.BytesIO = await bot.download_file(tg_file_path)
-    audio_file.name = 'new.ogg'
-    given_audio = AudioSegment.from_file(audio_file)
-    given_audio.export(file_path, format="mp3")
+    file_path = await decoder_to_mp3(file, bot)
 
     with open(file_path, "rb") as file:
-        ansver = openai.Audio.transcribe(
+        ansver: str = openai.Audio.transcribe(
             "whisper-1",
             file,
             response_format='text'
             )
-        duration = round(len(file) / 1000.0)
-        add_wisper_tokens(duration, state)
+        len_ans = len(ansver)
+        if len_ans >= 4000:
+            start = 0
+            finish = 4000
+            while len_ans > finish:
+                await SendMessage(
+                    text=ansver[start:finish],
+                    chat_id=message.from_user.id,
+                )
+                start += 4000
+                finish += 4000
+            
+                finish = finish if finish < len_ans else len_ans
+            return
+
         await mess.edit_text(
             text=ansver,
             reply_markup=gen_transcribe_bt(mess.message_id)
         )
-        
+    
+    with audioread.audio_open(file_path) as f:
+        totalsec = f.duration
+        duration = int(totalsec)
+        await add_wisper_tokens(duration, state, session_maker)
     os.remove(file_path)

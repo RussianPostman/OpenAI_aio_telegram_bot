@@ -40,7 +40,7 @@ async def get_or_create_account(
             user.account.append(account)
             session.add(account)
             session.add(user)
-            return account
+        return account
 
 
 async def get_user_account(

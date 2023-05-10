@@ -17,11 +17,12 @@ class RegisterCheck(BaseMiddleware):
         data: dict[str, Any]
         ) -> Any:
 
-        user_id = event.from_user.id
+        user_id = event.from_user.id        
         session_maker: sessionmaker = data['session_maker']
+        role_name = 'user'
 
         if not await is_user_exists(user_id, session_maker):
-            await create_user(user_id, session_maker)
+            await create_user(user_id, role_name, session_maker)
             await is_user_exists(user_id, session_maker)
             await data['bot'].send_message(
                 event.from_user.id,

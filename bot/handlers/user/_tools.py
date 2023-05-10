@@ -8,11 +8,8 @@ import tiktoken
 from aiogram import types, Bot
 from pydub import AudioSegment
 
-from bot.db import Dialogue
-from bot import openai_async, settings as sett
-from bot.db import create_message, get_dialogue_messages, \
-    delete_first_message
-from bot.db.services.accounting import get_or_create_account
+from bot import settings as sett
+import bot.db as db
 
 
 def _num_tokens_from_messages(messages, model="gpt-3.5-turbo-0301"):
@@ -31,7 +28,7 @@ def _num_tokens_from_messages(messages, model="gpt-3.5-turbo-0301"):
 async def gen_dialogue_cache(
         user_id: int,
         state: FSMContext,
-        last_dialogue: Dialogue,
+        last_dialogue: db.Dialogue,
         session_maker: sessionmaker
     ):
     await generate_payload(
@@ -49,14 +46,22 @@ async def gen_dialogue_cache(
 
 async def generate_payload(
         state: FSMContext,
-        last_dialogue: Dialogue,
-        session_maker: sessionmaker
+        last_dialogue: db.Dialogue,
+        session_maker: sessionmaker,
+        prompt: db.Prompt = None
     ):
     """
     На основе данных из БД заполняет кеш диалога данными:
         payload - данные для запроса
         dialogue_id - айди диалога в БД
     """
+    if prompt:
+        prompt_text = prompt.text
+        await state.update_data(parse_mode=prompt.parse_mode)
+    else:
+        prompt_text = sett.DEFOULT_PROMPT
+        await state.update_data(parse_mode=None)
+
     payload = {
         'model': last_dialogue.model,
         'temperature': last_dialogue.temperature,
@@ -66,16 +71,16 @@ async def generate_payload(
         'presence_penalty': last_dialogue.presence_penalty,
         'frequency_penalty': last_dialogue.frequency_penalty,
     }
-    messages_list = await get_dialogue_messages(
+    messages_list = await db.get_dialogue_messages(
         last_dialogue.id,
         session_maker=session_maker
         )
     if len(messages_list) == 0:
-        payload['messages'] =[{"role": "system", "content": sett.DEFOULT_PROMPT}]
-        await create_message(
+        payload['messages'] =[{"role": "system", "content": prompt_text}]
+        await db.create_message(
             last_dialogue.id,
             role='system',
-            text=sett.DEFOULT_PROMPT,
+            text=prompt_text,
             session_maker=session_maker
             )
     else:
@@ -86,7 +91,8 @@ async def generate_payload(
 
     await state.update_data(payload=payload)
     await state.update_data(dialogue_id=last_dialogue.id)
-    return sett.DEFOULT_PROMPT
+    await state.update_data(dialogue_name=last_dialogue.name)
+
 
 
 async def add_message(
@@ -125,7 +131,7 @@ async def check_tokens_buffer(
 
     while (conv_history_tokens+max_tokens >= token_limit):
         del messages[1]
-        await delete_first_message(data.get('dialogue_id'), session_maker)
+        await db.delete_first_message(data.get('dialogue_id'), session_maker)
         conv_history_tokens = _num_tokens_from_messages(messages)
 
     pprint(messages)
@@ -134,7 +140,7 @@ async def check_tokens_buffer(
 
 
 async def get_api_key(
-        dialogue: Dialogue,
+        dialogue: db.Dialogue,
         state: FSMContext
         ):
     """
@@ -196,14 +202,18 @@ async def set_accounting(
         user_id: int,
         session_maker: sessionmaker
         ):
+    """
+    Создаёт или открывает и сохраняет айти в кеше модели учёта токенов
+    для языковой модели и распознавания речи.
+    """
     data = await state.get_data()
     model = data['payload']['model']
-    acc = await get_or_create_account(
+    acc = await db.get_or_create_account(
         user_id,
         model,
         session_maker
         )
-    whisper_acc = await get_or_create_account(
+    whisper_acc = await db.get_or_create_account(
         user_id,
         'whisper-1',
         session_maker
@@ -214,6 +224,10 @@ async def set_accounting(
 
 
 async def send_message_stream(state: FSMContext):
+    """
+    Отправляет запрос openai на основе контекста. Последнее сообщение
+    к openai должно быть сохраненно в списке payload['messages']
+    """
     data = await state.get_data()
     payload = data.get('payload')
     model = payload.get('model')
@@ -240,6 +254,10 @@ async def message_handle_fn(
         state: FSMContext,
         message: types.message.Message
         ) -> str:
+    """
+    Ф-ция обрабатывает стриминговый поток от openai и обновляет
+    сообщение каждые DELTA_CHARACTERS символов
+    """
     gen = send_message_stream(state)
     prev_answer = ""
     async for gen_item in gen:
@@ -255,3 +273,30 @@ async def message_handle_fn(
             return answer
     await message.edit_text(answer)
     return answer
+
+
+async def rename_dialogue(
+        dial_id: int,
+        state: FSMContext,
+        session_maker: sessionmaker
+        ):
+    data = await state.get_data()
+    payload = data.get('payload')
+    model = payload.get('model')
+
+    messages = payload.pop('messages')
+    messages.append({"role": 'user', "content": 'give a name to our dialect in two words. Remember, your answer should contain only two words'})
+    payload['messages'] = messages
+
+    if model == "gpt-4":
+        openai.api_key = sett.GPT4_API_KEY
+    elif model == "gpt-3.5-turbo":
+        openai.api_key = sett.OPENAI_API_KEY
+
+    r_gen = await openai.ChatCompletion.acreate(**payload)
+    name: str = r_gen.choices[0].message.content
+
+    await db.update_dial_field(dial_id, 'name', name, session_maker)
+    await state.update_data(dialogue_name=name)
+    print(f'Диалог {dial_id} переименован в {name}')
+

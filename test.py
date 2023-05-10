@@ -81,3 +81,5 @@ async def message_handle_fn():
 
 
 asyncio.run(message_handle_fn())
+
+from openai.error import AuthenticationError
