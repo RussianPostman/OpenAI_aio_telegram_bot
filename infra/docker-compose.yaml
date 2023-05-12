@@ -1,0 +1,74 @@
+version: "3.9"
+# контейнеры устроены максимально универсально, должны одинаково работать
+# при включенном дебаге (Aio_bot/bot/settings.py DEBUG = True/False) и нет
+# для запуска сразу дебага и прода в одной системе надо в одном из случаем поменять
+# имена контейнеров, я подставляю _1
+
+services:
+  redis:
+    container_name: redislocal
+    hostname: redislocal
+    image: redis
+    expose:
+      - "6379"
+    ports:
+      - "127.0.0.1:6379:6379" # эта строчка позволяет подключаться к контейнеру в дебаге
+    volumes:
+      - OpenAI.local_redis_data:/data
+    restart:
+      unless-stopped
+
+  postgres:
+    container_name: ppostgres.OpenAI
+    image: "postgres:15-alpine"
+    restart: unless-stopped
+    expose:
+      - "5432"
+    ports:
+      - "127.0.0.1:8764:5432" # эта строчка позволяет подключаться к контейнеру в дебаге
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: ubnfhf
+      POSTGRES_DB: OpenAI_db
+    volumes:
+      - "OpenAI.postgres.data:/var/lib/postgresql/data:rw"
+    healthcheck: # это автопроверка, хз зачем и как, просто есть
+      test: ["CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 60s
+      retries: 5
+      start_period: 10s
+
+  pgadmin: # это админ панель, нцжна для дебага. В теории можно использовать и на проде -
+    container_name: OpenAI_pgadmin # но я не пробовал
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: miha@mial.ru
+      PGADMIN_DEFAULT_PASSWORD: ubnfhf
+    ports:
+      - "5055:80" # подключаться к пг админу по  127.0.0.1:5055
+    depends_on:
+      - postgres
+  
+  bot:
+    build: ../Aio_bot/
+    container_name: bot
+    restart: always
+    command: > # это команды выполняющиеся по очереди
+      bash -c "alembic upgrade head  
+      && alembic upgrade head
+      && python main.py"
+
+# там нельзя комментировать, пишу тут. Инициализация бд (приведение в соответствие с последней миграцией)
+# генерация миграций
+# создание таблиц
+# заауск приложения 
+    depends_on:
+      - redis
+      - postgres
+    env_file:
+      - .env
+
+volumes:
+  OpenAI.postgres.data: {}
+  OpenAI.local_redis_data: {}
