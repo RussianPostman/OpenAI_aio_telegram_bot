@@ -1,0 +1,53 @@
+version: "3.9"
+# Это компост для запуска проекта локально. В нём бот находится вне контейнера
+# а подключение к бр происходит через локалхост
+
+services:
+  redis:
+    container_name: local_redislocal
+    hostname: redislocal
+    image: redis
+    expose:
+      - "6379"
+    ports:
+      - "127.0.0.1:6379:6379" # эта строчка позволяет подключаться к контейнеру в дебаге
+    volumes:
+      - OpenAI_local.local_redis_data:/data
+    restart:
+      unless-stopped
+
+  postgres:
+    container_name: local_ppostgres.OpenAI
+    image: "postgres:15-alpine"
+    restart: unless-stopped
+    expose:
+      - "5432"
+    ports:
+      - "127.0.0.1:8764:5432" # эта строчка позволяет подключаться к контейнеру в дебаге
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: ubnfhf
+      POSTGRES_DB: OpenAI_db
+    volumes:
+      - "OpenAI_local.postgres.data:/var/lib/postgresql/data:rw"
+    healthcheck: # это автопроверка, хз зачем и как, просто есть
+      test: ["CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 60s
+      retries: 5
+      start_period: 10s
+
+  pgadmin: # это админ панель, нцжна для дебага. В теории можно использовать и на проде -
+    container_name: local_OpenAI_pgadmin # но я не пробовал
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: miha@mial.ru
+      PGADMIN_DEFAULT_PASSWORD: ubnfhf
+    ports:
+      - "5055:80" # подключаться к пг админу по  127.0.0.1:5055
+    depends_on:
+      - postgres
+
+volumes:
+  OpenAI_local.postgres.data: {}
+  OpenAI_local.local_redis_data: {}

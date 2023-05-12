@@ -7,9 +7,7 @@ from aioredis import Redis
 load_dotenv()
 
 
-redis = Redis()
-
-DEBUG = True  # не забудь поменять конфиг алембика
+DEBUG = False  # не забудь поменять конфиг алембика
 
 bot_commands = (
     ("new_gpt_3", "Начать новый диалог c GPT-3.5-turbo"),
@@ -30,20 +28,24 @@ ADMINS_ID = os.getenv('ADMIN_ID').split(', ')
 
 
 if DEBUG:
-    POSTGRES_USER=os.getenv("DEBUG_POSTGRES_USER").strip()
-    POSTGRES_HOST=os.getenv("DEBUG_POSTGRES_HOST").strip()
-    POSTGRES_DB=os.getenv("DEBUG_POSTGRES_DB").strip()
-    POSTGRES_PORT=os.getenv("DEBUG_POSTGRES_PORT").strip()
-    POSTGRES_PASSWORD=os.getenv("DEBUG_POSTGRES_PASSWORD").strip()
+    POSTGRES_USER=os.getenv("DEBUG_POSTGRES_USER")
+    POSTGRES_HOST=os.getenv("DEBUG_POSTGRES_HOST")
+    POSTGRES_DB=os.getenv("DEBUG_POSTGRES_DB")
+    POSTGRES_PORT=os.getenv("DEBUG_POSTGRES_PORT")
+    POSTGRES_PASSWORD=os.getenv("DEBUG_POSTGRES_PASSWORD")
+    REDIS_HOST=os.getenv("DEBUG_REDIS_HOST")
 
     DB_URL = f'postgresql+asyncpg://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}'
     # postgresql+asyncpg://root:ubnfhf@127.0.0.1:8764/OpenAI_db
 
 else:
-    POSTGRES_USER=os.getenv("POSTGRES_USER"),
-    POSTGRES_HOST=os.getenv("POSTGRES_HOST"),
-    POSTGRES_DB=os.getenv("POSTGRES_DB"),
-    POSTGRES_PORT=os.getenv("POSTGRES_PORT"),
+    POSTGRES_USER=os.getenv("POSTGRES_USER")
+    POSTGRES_HOST=os.getenv("POSTGRES_HOST")
+    POSTGRES_DB=os.getenv("POSTGRES_DB")
+    POSTGRES_PORT=os.getenv("POSTGRES_PORT")
     POSTGRES_PASSWORD=os.getenv("POSTGRES_PASSWORD")
+    REDIS_HOST=os.getenv("REDIS_HOST")
 
     DB_URL = f'postgresql+asyncpg://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}'
+
+redis = Redis(host=REDIS_HOST)
