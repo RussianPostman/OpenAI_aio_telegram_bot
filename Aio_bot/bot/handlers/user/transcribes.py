@@ -1,3 +1,6 @@
+"""
+Тут основная логика транскрипцииЮ но не вся, что-то в файле dialogue.py
+"""
 import os
 import openai
 import audioread
@@ -19,6 +22,9 @@ async def type_file(
         session_maker: sessionmaker,
         **data: dict[str, Any],
         ):
+    """
+    Срабатывает если в состоянии диалоги приходит файл
+    """
 
     file_id = message.audio.file_id
     bot: Bot = data['bot']
@@ -54,6 +60,9 @@ async def type_voice(
         session_maker: sessionmaker,
         **data: dict[str, Any],
     ):
+    """
+    Срабатывает если в состоянии диалоги приходит голосовое сообщение
+    """
     mess = await SendMessage(
         text='Обработка...',
         chat_id=message.from_user.id,

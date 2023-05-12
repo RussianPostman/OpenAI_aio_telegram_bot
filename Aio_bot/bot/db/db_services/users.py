@@ -16,7 +16,6 @@ async def create_user(
                 select(Role).where(Role.name == role_name)
             )
             role = sql_res.first()
-            print('11111111111111111')
             user = User(
                 user_id=int(user_id),
             )
@@ -44,6 +43,10 @@ async def get_all_users(session_maker: sessionmaker) -> list[User]:
 
 
 async def is_user_exists(user_id: int, session_maker: sessionmaker) -> bool:
+    """
+    Тут интересно. Эта ф-ция вызывается в мидлвеере, поэтому её результат кешируется
+    Чтобы не грузить бд. 
+    """
     res = await redis.get(name=str(user_id))
     if res != 1:
         async with session_maker() as session:

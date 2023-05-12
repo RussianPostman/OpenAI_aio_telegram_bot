@@ -1,7 +1,10 @@
+"""
+Запросы для модели Prompt
+"""
 from sqlalchemy.orm import sessionmaker, selectinload
 from sqlalchemy import select
 
-from bot.db.models import Prompt, Role
+from bot.db.models import Prompt
 
 
 async def prompt_get_or_create(
@@ -12,7 +15,10 @@ async def prompt_get_or_create(
         welcome_message: str,
         parse_mode: str = 'markdown',
         public: bool = False,
-    ):
+    ) -> Prompt:
+    """
+    Вернуть или создать и вернуть экземпляр Prompt 
+    """
     async with session_maker() as session:
         async with session.begin():
             sql_res = await session.scalars(
@@ -47,6 +53,9 @@ async def prompt_create(
         parse_mode: str = 'markdown',
         public: bool = False,
     ) -> Prompt:
+    """
+    Создать новый промпт
+    """
     async with session_maker() as session:
         async with session.begin():
             prompt = Prompt(
@@ -64,6 +73,9 @@ async def prompt_create(
 async def get_public_prompts(
         session_maker: sessionmaker,
     ) -> list[Prompt]:
+    """
+    Выдать все public == Trye промпты
+    """ 
     async with session_maker() as session:
         async with session.begin():
             sql_res = await session.scalars(

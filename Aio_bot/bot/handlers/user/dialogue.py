@@ -1,18 +1,17 @@
+"""
+В этом файле самая жесть. Тут сама логика дяалога с ГПТ
+"""
 from pprint import pprint
 from typing import Any
-from httpx import Response, Timeout
+from httpx import Response
 
-from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
 from aiogram.methods import SendMessage
 from aiogram import Bot, types
 from sqlalchemy.orm import sessionmaker
 
-# from bot.handlers.keyboards.user_kb import DIALOGUE_KB
 from bot import settings as sett
 import bot.db as db
-# from bot.db import create_dialogue, get_dial_by_id, \
-#     create_message, get_or_create_account
 from bot import openai_async
 from ._tools import generate_payload, get_api_key, check_tokens_buffer, \
     add_message, set_accounting, message_handle_fn, gen_dialogue_cache, \
@@ -27,14 +26,17 @@ async def new_GPT_3(
         state: FSMContext,
         session_maker: sessionmaker
         ):
-    await state.clear()
+    """
+    Создаёт новый диалог с GPT_3 и открывает его, заполняя контекстом
+    """
+    await state.clear() # на всякий случай чистит состояние
     msg = await message.answer(
         'Секунду...',
         )
     user_id = message.from_user.id
-    await state.set_state(DialogueStates.dialogue)
+    await state.set_state(DialogueStates.dialogue) # выставляет состояние диалога
 
-    last_dialogue = await db.create_dialogue(
+    last_dialogue = await db.create_dialogue( # создаёт диалог в БД
         user_id,
         session_maker,
         'gpt-3.5-turbo'
@@ -58,6 +60,9 @@ async def new_GPT_4(
         state: FSMContext,
         session_maker: sessionmaker
         ):
+    """
+    Создаёт новый диалог с GPT_4 и открывает его, заполняя контекстом
+    """
     await state.clear()
     msg = await message.answer(
         'Секунду...',
@@ -111,6 +116,9 @@ async def open_dialogue(
         state: FSMContext,
         session_maker: sessionmaker
     ):
+    """
+    Открывает диалог по кнобке из списка диалогов
+    """
     dial = await db.get_dial_by_id(callback_data.dial_id, session_maker)
     await state.set_state(DialogueStates.dialogue)
     await generate_payload(state, dial, session_maker)
@@ -127,13 +135,16 @@ async def dialogue(
         state: FSMContext,
         session_maker: sessionmaker
         ):
+    """
+    Тут вся логика диалога
+    """
     data = await add_message(message.text, "user", state)
     dialogue_id = data['dialogue_id']
     payload = data.get('payload')
     model = payload.get("model")
 
     await check_tokens_limit(state, session_maker)
-    await db.create_message(
+    await db.create_message( # создаёт сообщение из текста присланного юзером
         dialogue_id,
         role='user',
         text=message.text,
@@ -150,7 +161,7 @@ async def dialogue(
     dial_name: str = data.get('dialogue_name')
 
     await check_tokens_limit(state, session_maker)
-    await db.create_message(
+    await db.create_message( # сохраняет в БД ответ ГПТ
         dialogue_id,
         role='assistant',
         text=chat_response,
@@ -169,6 +180,10 @@ async def transcribe_to_gpt(
         session_maker: sessionmaker,
         **data: dict[str, Any],
     ):
+    """
+    От кнопки "Отправить ГПТ" получает айди сообщения с данными
+    и отправляет его ГПТ
+    """
     mess_id = callback_data.message_id
     chat_id = query.from_user.id
     bot: Bot = data['bot']

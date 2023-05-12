@@ -10,6 +10,9 @@ async def role_get_or_create(
         name: str,
         session_maker: sessionmaker,
     ) -> Role:
+    """
+    Вернуть или создать и вернуть экземпляр Role 
+    """
     async with session_maker() as session:
         async with session.begin():
             get_roles = await session.scalars(

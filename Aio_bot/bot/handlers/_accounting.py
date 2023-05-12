@@ -1,14 +1,12 @@
-import io
+"""
+Логика учёта токенов
+"""
 from pprint import pprint
 from aiogram.fsm.context import FSMContext
 from sqlalchemy.orm import sessionmaker
 import tiktoken
-from aiogram import types, Bot
-from pydub import AudioSegment
 
-from bot.db import Dialogue
-from bot import settings as sett
-from bot.db import get_user_account, apdate_account_tokens
+from bot.db import apdate_account_tokens
 
 
 def _num_tokens_from_messages(messages, model="gpt-3.5-turbo-0301"):

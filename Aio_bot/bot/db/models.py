@@ -1,3 +1,6 @@
+"""
+Ну тут просто модели в базе данных
+"""
 from sqlalchemy import BigInteger, Column, ForeignKey, String, Table
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 

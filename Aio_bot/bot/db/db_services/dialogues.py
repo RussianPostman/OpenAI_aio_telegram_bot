@@ -1,3 +1,6 @@
+"""
+Запросы для модели Dialogue
+"""
 from datetime import date
 from typing import Any
 from sqlalchemy.orm import sessionmaker, selectinload
@@ -20,6 +23,9 @@ async def create_dialogue(
         name: str = None,
         parse_mode: str = 'markdown'
     ) -> Dialogue:
+    """
+    Создать диалог
+    """
     async with session_maker() as session:
         async with session.begin():
             user_res = await session.scalars(
@@ -54,6 +60,9 @@ async def get_user_dialogues(
         user_id: int,
         session_maker: sessionmaker
     ) -> list[Dialogue]:
+    """
+    Выдать диалоги юзера
+    """
     async with session_maker() as session:
         async with session.begin():
             sql_res = await session.scalars(
@@ -68,6 +77,9 @@ async def get_dialogue(
         dialogue_name: str,
         session_maker: sessionmaker,
     ) -> Dialogue:
+    """
+    Выдать диалог по названию и юзерайди
+    """
     async with session_maker() as session:
         async with session.begin():
             sql_res = await session.scalars(
@@ -84,6 +96,9 @@ async def get_dial_by_id(
         dial_id: int,
         session_maker: sessionmaker,
     ) -> Dialogue:
+    """
+    Выдать диалог по айди
+    """
     async with session_maker() as session:
         async with session.begin():
             sql_res = await session.scalars(
@@ -99,6 +114,9 @@ async def update_dial_field(
         value: Any,
         session_maker: sessionmaker,
     ):
+    """
+    Изменить поле диалога
+    """
     async with session_maker() as session:
         async with session.begin():
             sql_res = await session.scalars(

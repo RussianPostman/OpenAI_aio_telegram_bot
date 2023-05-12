@@ -1,5 +1,5 @@
 """
-    Клавиатура для отображения постов
+Тут просто образцы для клавиатур. Взял этот файл из старого проекта
 """
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton

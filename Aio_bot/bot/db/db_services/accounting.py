@@ -1,3 +1,6 @@
+"""
+Запросы для модели Accounting
+"""
 from datetime import date
 from typing import Any
 from sqlalchemy.orm import sessionmaker, selectinload
@@ -13,6 +16,9 @@ async def get_or_create_account(
         spent: int = 0,
         paid: int = 0,
     ) -> Accounting:
+    """
+    Вернуть или создать и вернуть экземпляр Accounting 
+    """
     async with session_maker() as session:
         async with session.begin():
             get_account = await session.scalars(
@@ -48,6 +54,9 @@ async def get_user_account(
         model: str,
         session_maker: sessionmaker
     ) -> list[Accounting]:
+    """
+    Вернуть все модели учета токенов пользователя
+    """
     async with session_maker() as session:
         async with session.begin():
             sql_res = await session.scalars(
@@ -65,6 +74,9 @@ async def apdate_account_tokens(
         torens: int,
         session_maker: sessionmaker
     ) -> list[Accounting]:
+    """
+    Обновить инфу о токенах
+    """
     async with session_maker() as session:
         async with session.begin():
             sql_res = await session.scalars(

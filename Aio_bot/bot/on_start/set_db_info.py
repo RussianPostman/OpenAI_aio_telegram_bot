@@ -1,3 +1,6 @@
+"""
+Ф-ции запускающиеся при старте. Заполняю БД необходимой инфой
+"""
 import asyncio
 import yaml
 from pprint import pprint
@@ -8,12 +11,18 @@ import bot.db as db
 
 
 async def set_users_roles(session_maker: sessionmaker):
+    """
+    Подгружает роли
+    """
     roles_list = ['admin', 'user']
     for role in roles_list:
         await db.role_get_or_create(role, session_maker)
 
 
 async def set_admins(session_maker: sessionmaker):
+    """
+    Подгружает юзеров из списка в .env, выдавая им админки
+    """
     admins_list = sett.ADMINS_ID
     print(admins_list)
     for admin in admins_list:
@@ -22,6 +31,9 @@ async def set_admins(session_maker: sessionmaker):
 
 
 async def set_prompts(session_maker: sessionmaker):
+    """
+    Подгружает предустановленные промпты
+    """
     with open('bot/on_start/prompts.yaml', encoding='utf-8') as f:
         prompts = yaml.safe_load(f)
         for prompt in prompts:

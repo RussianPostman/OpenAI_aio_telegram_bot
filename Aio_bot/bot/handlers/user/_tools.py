@@ -1,3 +1,6 @@
+"""
+Тут всякая бекенд логика хендлеров. Заранее извиняюсь за говнокод
+"""
 import asyncio
 import io
 from pprint import pprint
@@ -13,6 +16,9 @@ import bot.db as db
 
 
 def _num_tokens_from_messages(messages, model="gpt-3.5-turbo-0301"):
+    """
+    Считает количество токенов в списке сообщений
+    """
     encoding = tiktoken.encoding_for_model(model)
     num_tokens = 0
     for message in messages:
@@ -31,6 +37,9 @@ async def gen_dialogue_cache(
         last_dialogue: db.Dialogue,
         session_maker: sessionmaker
     ):
+    """
+    Генерирует кеш диалога при его открытии
+    """
     await generate_payload(
         state,
         last_dialogue,

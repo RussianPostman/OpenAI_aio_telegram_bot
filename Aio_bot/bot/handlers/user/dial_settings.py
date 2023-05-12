@@ -26,6 +26,9 @@ async def dial_settings(
         message: types.Message,
         state: FSMContext,
         ):
+    """
+    Показывает текущие настройки диалога и выводит кнопки для их изменения
+    """
     data: dict = await state.get_data()
     payload: dict = data.get('payload')
     text = (
@@ -53,6 +56,9 @@ async def settings_menu(
         callback_data: SettingsCallback,
         state: FSMContext,
         ):
+    """
+    На основе нажатой кнопки говорит какие значения вводить
+    """
     param = callback_data.param
     await state.set_state(DialogueStates.change_2)
     await state.update_data(param=param)
@@ -68,6 +74,9 @@ async def dial_change(
         state: FSMContext,
         session_maker: sessionmaker
         ):
+    """
+    Меняет настройки диалога на основе ввода пользователя
+    """
     user_imput = message.text.strip()
     data = await state.get_data()
     payload = data.get('payload')

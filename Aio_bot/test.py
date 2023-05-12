@@ -1,3 +1,8 @@
+"""
+Тут всякий тестовый мусор. 
+"""
+
+
 # from sqlalchemy import URL
 # import asyncio
 # import os

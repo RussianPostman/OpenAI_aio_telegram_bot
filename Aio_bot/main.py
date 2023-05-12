@@ -1,3 +1,6 @@
+"""
+Файл запуска бота
+"""
 import os
 import asyncio
 import logging
@@ -25,6 +28,7 @@ async def main():
     logging.basicConfig(level=logging.DEBUG)
     commands_for_bot = []
 
+    # устанавливаем комманды
     for cmd in sett.bot_commands:
         commands_for_bot.append(BotCommand(command=cmd[0], description=cmd[1]))
 
@@ -32,6 +36,7 @@ async def main():
     bot = Bot(TELEGRAM_TOKEN)
     await bot.set_my_commands(commands=commands_for_bot)
 
+    # регистрируем БД
     postgres_url = URL.create(
         drivername="postgresql+asyncpg",
         username=sett.POSTGRES_USER,
@@ -41,6 +46,7 @@ async def main():
         password=sett.POSTGRES_PASSWORD
     )
 
+    # оегистрируем мидлвари
     dp.message.middleware(RegisterCheck())
     dp.callback_query.middleware(RegisterCheck())
 
@@ -49,10 +55,11 @@ async def main():
 
     register_user_commands(dp)
 
+    # выполняем ф-цию при старте
     await on_start(session_maker)
 
-    ####
-    # await redis.flushdb()
+    #### вот это интересная штука, нужна при дебаге, но не всегда. 
+    # await redis.flushdb() # если это разкомментировать, чистит редис при каждом перезапуске, иногда полезно
 
     await dp.start_polling(bot, session_maker=session_maker)
 

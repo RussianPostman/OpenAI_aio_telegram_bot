@@ -1,4 +1,9 @@
-import sqlalchemy.ext.asyncio
+"""
+Тут описываются ф-ции для взаимодействия бота с БД. Тут я тоже всё списал
+из этого видоса:
+https://www.youtube.com/watch?v=krrzddL1N-8&t=489s
+это серия роликов, лучше ознакомиться со всеми если что-то не понятно
+"""
 from typing import Union
 from sqlalchemy import MetaData
 from sqlalchemy.engine import URL

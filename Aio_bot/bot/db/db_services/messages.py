@@ -1,3 +1,6 @@
+"""
+Запросы для модели Message
+"""
 from sqlalchemy.orm import sessionmaker, selectinload
 from sqlalchemy import select
 
@@ -11,6 +14,9 @@ async def create_message(
         text: str,
         session_maker: sessionmaker
     ):
+    """
+    Создать Message
+    """
     async with session_maker() as session:
         async with session.begin():
             dialogue_res = await session.scalars(
@@ -32,6 +38,9 @@ async def get_dialogue_messages(
         dialogue_id: str,
         session_maker: sessionmaker
     ) -> list[Message]:
+    """
+    вернуть все сообщения в диалоге
+    """
     async with session_maker() as session:
         async with session.begin():
             sql_res = await session.scalars(
@@ -45,6 +54,9 @@ async def delete_first_message(
         dialogue_id: str,
         session_maker: sessionmaker
     ) -> Message:
+    """
+    Удалить самое старое не системное сообщение
+    """
     async with session_maker() as session:
         async with session.begin():
             sql_res = await session.scalars(

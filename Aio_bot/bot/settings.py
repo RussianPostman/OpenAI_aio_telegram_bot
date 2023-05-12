@@ -9,7 +9,7 @@ load_dotenv()
 
 DEBUG = False  # не забудь поменять конфиг алембика
 
-bot_commands = (
+bot_commands = ( # команды для меню бота
     ("new_gpt_3", "Начать новый диалог c GPT-3.5-turbo"),
     ("new_gpt_4", "Начать новый диалог c GPT-4"),
     ("my_dialogues", "Выбрать диалог"),

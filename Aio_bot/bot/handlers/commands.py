@@ -1,4 +1,6 @@
-from typing import Any
+"""
+Хендлеры команд бота
+"""
 from aiogram import types
 from aiogram.fsm.context import FSMContext
 from aiogram.methods import SendMessage

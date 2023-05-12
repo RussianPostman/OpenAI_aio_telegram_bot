@@ -1,3 +1,7 @@
+"""
+Тут описана базовая модель для базы данных. Что именно тут происходит я
+честно говоря хз, этот код мне дали в чатике
+"""
 from sqlalchemy import MetaData
 from sqlalchemy.orm import DeclarativeBase, registry
 
